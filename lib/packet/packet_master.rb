@@ -63,7 +63,7 @@ module Packet
       t_workers.each do |b_worker|
         worker_name = File.basename(b_worker,".rb")
         require worker_name
-        worker_klass = Object.const_get(packet_classify(worker_name))
+        worker_klass = packet_classify(worker_name)
         next if worker_klass.no_auto_load
         fork_and_load(worker_klass)
       end
@@ -71,14 +71,21 @@ module Packet
 
     def start_worker(worker_options = { })
       worker_name = worker_options[:worker].to_s
+      raise ArgumentError, "No worker name provided" unless worker_name.size > 0
+      worker_require = worker_options.delete(:worker_require) || worker_name
       worker_name_key = gen_worker_key(worker_name,worker_options[:worker_key])
       return if @live_workers[worker_name_key]
       worker_options.delete(:worker)
       begin
-        require worker_name
-        worker_klass = Object.const_get(packet_classify(worker_name))
+        worker_klass = packet_classify(worker_name)
+        require worker_require
         fork_and_load(worker_klass,worker_options)
       rescue LoadError
+        if worker_require.include?('/')
+          new_worker_require = worker_require.split("/")[0..-2].join("/")
+          start_worker(worker_options.merge(:worker_require=>new_worker_require, :worker=>worker_name))
+          return
+        end
         puts "no such worker #{worker_name}"
         return
       end
@@ -121,7 +128,7 @@ module Packet
 
       if worker_pimp && !worker_pimp.empty?
         require worker_pimp
-        pimp_klass = Object.const_get(packet_classify(worker_pimp))
+        pimp_klass = packet_classify(worker_pimp)
         @live_workers[worker_name_key,master_read_end.fileno] = pimp_klass.new(master_write_end,pid,self)
       else
         t_pimp = Packet::MetaPimp.new(master_write_end,pid,self)

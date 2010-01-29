@@ -1,8 +1,10 @@
 module Packet
   module NbioHelper
     def packet_classify(original_string)
-      word_parts = original_string.split('_')
-      return word_parts.map { |x| x.capitalize}.join
+      module_chain = original_string.split("/").map { |module_name| module_name.split("_").map{|word| word.capitalize}.join }
+      module_chain.inject(Object) do |const, module_name|
+        const.const_get(module_name)
+      end
     end
 
     def gen_worker_key(worker_name,worker_key = nil)

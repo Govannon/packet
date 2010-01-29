@@ -26,20 +26,30 @@ module Packet
       load_worker worker_name
     end
 
-    def load_worker worker_name
-      if @worker_root && (File.file? "#{@worker_root}/#{worker_name}.rb")
-        require "#{@worker_root}/#{worker_name}"
-        worker_klass = Object.const_get(packet_classify(worker_name))
+    def load_worker(worker_name, worker_require=worker_name)
+      if @worker_root && (File.file? "#{@worker_root}/#{worker_require}.rb")
+        require "#{@worker_root}/#{worker_require}"
+      else
+        require worker_require
+      end
+
+      worker_klass = packet_classify(worker_name)
+      if worker_klass.is_worker?
         worker_klass.start_worker(:read_end => @worker_read_fd,:write_end => @worker_write_fd,:options => WORKER_OPTIONS)
       else
-        require worker_name
-        worker_klass = Object.const_get(packet_classify(worker_name))
-        if worker_klass.is_worker?
-          worker_klass.start_worker(:read_end => @worker_read_fd,:write_end => @worker_write_fd,:options => WORKER_OPTIONS)
-        else
-          raise Packet::InvalidWorker.new(worker_name)
-        end
+        raise Packet::InvalidWorker.new(worker_name)
       end
+    rescue LoadError => e
+      if worker_require.include?('/')
+        new_worker_require = worker_require.split("/")[0..-2].join("/")
+        load_worker(worker_name, new_worker_require)
+        return
+      end
+      puts "LoadError: #{e.message}"
+      raise e
+    rescue => e
+      puts "[load_worker] something went wrong: #{e.inspect}"
+      raise
     end
   end
 end
