@@ -1,6 +1,7 @@
 require File.join(File.dirname(__FILE__),"spec_helper")
 
 context "For Packet Core using classes" do
+  include Mocha::API
   setup do
     class Foo
       include Packet::Core
@@ -68,7 +69,7 @@ context "For Packet Core using classes" do
   specify "start server should register the handle" do
     a = Foo.new
     client_connection = stub(:receive_data => "wow")
-    a.start_server("localhost",11000,client_connection)
+    a.start_server("127.0.0.1",11000,client_connection)
     a.listen_sockets.should.not.be.empty
     a.read_ios.should.not.be.empty
     fileno = (a.read_ios[0]).fileno
@@ -78,7 +79,7 @@ context "For Packet Core using classes" do
   specify "for normal connect" do
     a = Foo.new
     client_connection = stub(:receive_data => "wow")
-    a.connect("localhost",8765,client_connection)
+    a.connect("127.0.0.1",8765,client_connection)
     a.connection_completion_awaited.should.not.be.empty
     sock_fd = a.connection_completion_awaited.keys[0]
     a.write_ios[0].fileno == sock_fd
@@ -87,7 +88,7 @@ context "For Packet Core using classes" do
   specify "for an external connection thats immediately completed" do
     a = Foo.new
     client_connection = stub(:receive_data => "wow")
-    a.connect("localhost",8765,client_connection)
+    a.connect("127.0.0.1",8765,client_connection)
     a.connection_completion_awaited.should.not.be.empty
     sock_fd = a.connection_completion_awaited.keys[0]
     a.write_ios[0].fileno == sock_fd
@@ -107,6 +108,7 @@ context "For Packet Core using classes" do
 end
 
 context "Packet Core using modules" do
+  include Mocha::API
   setup do
     class Foo
       include Packet::Core
